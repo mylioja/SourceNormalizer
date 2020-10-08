@@ -13,6 +13,28 @@ namespace {
     );
 
 
+    //  Return true if the path denotes an uninteresting directory
+    //  that should be skipped because it won't contain any sources
+    bool should_be_skipped(const fs::path& path)
+    {
+        std::string name = path.filename().string();
+
+        //  Skip if the name begins with a '.'
+        if (name[0] == '.')
+        {
+            return true;
+        }
+
+        //  Skip the "build" directory
+        if (name == "build")
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+
     bool is_source_file(const fs::path& path)
     {
         std::string ext = path.extension().string();
@@ -22,12 +44,20 @@ namespace {
 
     int scan_for_files(std::string& root_dir)
     {
-        auto dir_iter = fs::recursive_directory_iterator(root_dir);
-        for (const auto& entry: dir_iter)
+        auto iter = fs::recursive_directory_iterator(root_dir);
+        const auto end =  fs::recursive_directory_iterator();
+        for (; iter != end; ++iter)
         {
+            const auto& entry = *iter;
+            if (fs::is_directory(entry.status()) && should_be_skipped(entry.path()))
+            {
+                iter.disable_recursion_pending();
+                continue;
+            }
+
             if (fs::is_regular_file(entry.status()) && is_source_file(entry.path()))
             {
-                std::cout << entry.path() << '\n';
+                std::cout << "Examine: " << entry.path() << '\n';
             }
         }
 
