@@ -1,3 +1,5 @@
+#include "normalizer.h"
+
 #include <experimental/filesystem>
 #include <iostream>
 #include <regex>
@@ -42,8 +44,9 @@ namespace {
     }
 
 
-    int scan_for_files(std::string& root_dir)
+    int scan_and_process(std::string& root_dir)
     {
+        Normalizer normalizer;
         auto iter = fs::recursive_directory_iterator(root_dir);
         const auto end =  fs::recursive_directory_iterator();
         for (; iter != end; ++iter)
@@ -57,7 +60,7 @@ namespace {
 
             if (fs::is_regular_file(entry.status()) && is_source_file(entry.path()))
             {
-                std::cout << "Examine: " << entry.path() << '\n';
+                normalizer.normalize(entry.path());
             }
         }
 
@@ -76,7 +79,7 @@ int main(int argc, char** argv)
 
     std::string root_dir = argv[1];
 
-    int err = scan_for_files(root_dir);
+    int err = scan_and_process(root_dir);
 
     return err;
 }

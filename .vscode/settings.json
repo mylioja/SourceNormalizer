@@ -1,5 +1,11 @@
 {
     "files.associations": {
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "*.tcc": "cpp",
+        "stdexcept": "cpp",
+        "streambuf": "cpp",
+        "regex": "cpp",
+        "tuple": "cpp",
+        "typeinfo": "cpp"
     }
 }
