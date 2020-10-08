@@ -10,12 +10,35 @@ namespace {
 
     //  Error bits
     enum {
+        //  Fixable errors
         err_unusual_whitespace  = 0x0001,  // Tabs, FF, etc...
         err_trailing_whitespace = 0x0002,  // Lines with whitespace at end
-        err_cr_lf_line_endings  = 0x0004,  // The dreaded windows line ending
-        err_invalid_encoding    = 0x0008,  // Possibly UTF-16
-        err_invalid_characters  = 0x0010,  // Strange stuff
+        err_cr_lf_line_endings  = 0x0004,  // Windows CR-LF line ending
+        err_fixable             = 0x00ff,
+        //
+        //  Hopeless errors
+        err_invalid_encoding    = 0x0100,  // Possibly UTF-16
+        err_invalid_characters  = 0x0200,  // Strange characters
+        err_hopeless            = 0xff00,
     };
+
+
+    bool is_fixable(unsigned errors)
+    {
+        //  Can't fix if any hopeless errors
+        if ((errors & err_hopeless) != 0)
+        {
+            return false;
+        }
+
+        //  Must have at least one fixable error
+        if ((errors & err_fixable) != 0)
+        {
+            return true;
+        }
+
+        return false;
+    }
 
 
     unsigned classify_errors(const char* data, int size)
@@ -94,7 +117,8 @@ namespace {
     }
 
 
-    void add_and_if_needed(std::string& text)
+    //  Add an "and" if needed to make the message nicer
+    void beautify_message(std::string& text)
     {
         auto pos = text.find(',');
         if (pos != std::string::npos)
@@ -108,9 +132,9 @@ namespace {
 
 void Normalizer::normalize(const std::experimental::filesystem::path& path)
 {
-    m_err_bits = 0;
+    m_errors = 0;
     m_full_name.clear();
-    m_errors.clear();
+    m_error_message.clear();
     m_data.clear();
     m_data.reserve(64*1024);
 
@@ -119,44 +143,15 @@ void Normalizer::normalize(const std::experimental::filesystem::path& path)
         return;
     }
 
-    m_err_bits = classify_errors(m_data.data(), data_size());
-    if (!m_err_bits)
+    if (!find_errors())
     {
-        return;
+        return; //  No errors found
     }
 
-    if (m_err_bits & err_invalid_characters)
-    {
-        if (is_utf16())
-        {
-            //  If encoding is wrong, the other errors are meaningless
-            m_err_bits = err_invalid_encoding;
-            add_error("Invalid encoding. Possibly UTF-16?");
-            return;
-        }
 
-        add_error("Invalid characters");
-    }
-
-    if (m_err_bits & err_unusual_whitespace)
+    if (is_fixable(m_errors))
     {
-        add_error("Tabs or unusual whitespace");
-    }
 
-    if (m_err_bits & err_trailing_whitespace)
-    {
-        add_error("Trailing whitespace");
-    }
-
-    if (m_err_bits & err_cr_lf_line_endings)
-    {
-        add_error("CR-LF line endings");
-    }
-
-    if (!m_errors.empty())
-    {
-        add_and_if_needed(m_errors);
-        std::cerr << "File: " << m_full_name << " has " << m_errors << '\n';
     }
 }
 
@@ -180,7 +175,52 @@ bool Normalizer::load_file(const std::experimental::filesystem::path& path)
 }
 
 
-//  Files coming from Windows may sometimes be UTF-16. This is a quick check for it.
+bool Normalizer::find_errors()
+{
+    m_errors = classify_errors(m_data.data(), data_size());
+    if (m_errors == 0)
+    {
+        //  Return false if no errors found
+        return false;
+    }
+
+    if (m_errors & err_invalid_characters)
+    {
+        if (is_utf16())
+        {
+            //  If encoding is wrong, the other errors aren't significant
+            m_errors = err_invalid_encoding;
+            add_error_message("Invalid encoding. Possibly UTF-16?");
+            return true;
+        }
+
+        add_error_message("Invalid characters");
+    }
+
+    if (m_errors & err_unusual_whitespace)
+    {
+        add_error_message("Tabs or unusual whitespace");
+    }
+
+    if (m_errors & err_trailing_whitespace)
+    {
+        add_error_message("Trailing whitespace");
+    }
+
+    if (m_errors & err_cr_lf_line_endings)
+    {
+        add_error_message("CR-LF line endings");
+    }
+
+    beautify_message(m_error_message);
+    std::cerr << "File: " << m_full_name << " has " << m_error_message << '\n';
+
+    return true;
+}
+
+
+//  Files coming from Windows may sometimes have UTF-16 encoding.
+//  This is a quick check for it.
 bool Normalizer::is_utf16() const
 {
     //  A leading Byte Order Mark (BOM) is a good sign of an UTF-16 or UCS-2 encoding.
@@ -217,12 +257,12 @@ bool Normalizer::is_utf16() const
 }
 
 
-void Normalizer::add_error(const char* text)
+void Normalizer::add_error_message(const char* text)
 {
-    if (!m_errors.empty())
+    if (!m_error_message.empty())
     {
-        m_errors += ", ";
+        m_error_message += ", ";
     }
 
-    m_errors += text;
+    m_error_message += text;
 }
