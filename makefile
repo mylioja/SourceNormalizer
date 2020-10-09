@@ -10,7 +10,7 @@ SRC      := $(wildcard *.cpp)
 HEADERS  := $(wildcard *.h)
 OBJECTS  := $(SRC:%.cpp=$(BUILD_DIR)/%.o)
 
-CXX      := g++
+CXX      := g++-8
 CXXFLAGS := -std=c++17 -Wall -Wextra -Werror -DDEBUG -O0 -g
 LIBS     := -lstdc++fs
 

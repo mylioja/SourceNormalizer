@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/source_normalizer",
-            "args": ["../.."],
+            "args": ["-v", "--skip=build", "../.."],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

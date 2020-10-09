@@ -7,12 +7,12 @@
 class Normalizer
 {
 public:
-    void normalize(const std::experimental::filesystem::path& path);
+    void normalize(const char* path);
 
 private:
     using Buffer = std::vector<char>;
 
-    bool load_file(const std::experimental::filesystem::path& path);
+    bool load_file(const char* path);
 
     //  Returns false if no errors found
     bool find_errors();

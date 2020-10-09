@@ -1,14 +1,78 @@
 #include "normalizer.h"
 
-#include <experimental/filesystem>
+#include <filesystem>
+#include <getopt.h>
 #include <iostream>
 #include <regex>
+#include <set>
 #include <string>
 
-namespace fs = std::experimental::filesystem;
+//  Program name and version
+//  Currently as macros to enable compile time concatenation
+//  into static const strings.
+//
+#define PROGRAM_NAME "source_normalizer"
+#define PROGRAM_VERSION "1.1"
+
+namespace fs = std::filesystem;
 
 namespace {
 
+    struct option long_options[] =
+    {
+        {"fix", no_argument, 0, 'f'},
+        {"help", no_argument, 0, 'h'},
+        {"recursive", no_argument, 0, 'r'},
+        {"skip", required_argument, 0, 's'},
+        {"verbose", no_argument, 0, 'v'},
+        {"version", no_argument, 0, 'V'},
+        {0, 0, 0, 0}
+    };
+
+    const char short_options[] = "fhrs:vV";
+
+    const char usage_msg[] = "Usage: " PROGRAM_NAME " [option]... path [path]...\n";
+
+    const char help_msg[] =
+        "Detect and optionally fix whitespace issues in source files.\n"
+        "Example: " PROGRAM_NAME " menu.h main.c\n"
+        ;
+
+    const char copyright_msg[] =
+        "Copyright (C) 2020 Martti Ylioja.\n"
+        "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.\n"
+        "This is free software: you are free to change and redistribute it.\n"
+        "There is NO WARRANTY, to the extent permitted by law.\n";
+
+    void emit_version(std::ostream& os)
+    {
+        os << PROGRAM_NAME " " PROGRAM_VERSION "\n";
+        os << copyright_msg;
+    }
+
+    void emit_help(std::ostream& os)
+    {
+        os << usage_msg << help_msg;
+    }
+
+    //  Command line options
+    struct Options
+    {
+        bool fix;
+        bool verbose;
+        bool recursive;
+        std::set<std::string> skip;
+    };
+
+    Options opts;
+
+    void add_skip(const char* arg)
+    {
+        //  TODO: Accept a comma separated list of names
+        opts.skip.emplace(arg);
+    }
+
+    //  Extensions to be accepted as source files
     const auto cpp_regex = std::regex(
         "\\.(h|hpp|c|cc|cpp)",
         std::regex::optimize | std::regex::extended
@@ -16,7 +80,7 @@ namespace {
 
 
     //  Return true if the path denotes an uninteresting directory
-    //  that should be skipped because it won't contain any sources
+    //  that should be skipped.
     bool should_be_skipped(const fs::path& path)
     {
         std::string name = path.filename().string();
@@ -27,8 +91,8 @@ namespace {
             return true;
         }
 
-        //  Skip the "build" directory
-        if (name == "build")
+        //  Skip if one of the names given in skip options
+        if (opts.skip.count(name))
         {
             return true;
         }
@@ -37,49 +101,157 @@ namespace {
     }
 
 
-    bool is_source_file(const fs::path& path)
+    bool has_required_extension(const fs::path& path)
     {
         std::string ext = path.extension().string();
         return std::regex_match(ext, cpp_regex);
     }
 
 
-    int scan_and_process(std::string& root_dir)
+    void scan_and_process(fs::path& path)
     {
         Normalizer normalizer;
-        auto iter = fs::recursive_directory_iterator(root_dir);
+        auto iter = fs::recursive_directory_iterator(path);
         const auto end =  fs::recursive_directory_iterator();
         for (; iter != end; ++iter)
         {
             const auto& entry = *iter;
-            if (fs::is_directory(entry.status()) && should_be_skipped(entry.path()))
+            if (entry.is_directory())
             {
-                iter.disable_recursion_pending();
+                const char* prefix = "enter ";
+                if (!opts.recursive || should_be_skipped(entry.path()))
+                {
+                    iter.disable_recursion_pending();
+                    prefix = "skip ";
+                }
+
+                if (opts.verbose)
+                {
+                    std::cout << prefix << entry.path() << '\n';
+                }
+
                 continue;
             }
 
-            if (fs::is_regular_file(entry.status()) && is_source_file(entry.path()))
+            if (entry.is_regular_file())
             {
-                normalizer.normalize(entry.path());
+                bool select = has_required_extension(entry.path());
+                if (opts.verbose)
+                {
+                    std::cout << (select ? "examine " : "skip ") << entry.path() << '\n';
+                }
+
+                if (select)
+                {
+                    std::string full_name = entry.path().string();
+                    normalizer.normalize(full_name.c_str());
+                }
             }
         }
+    }
 
-        return 0;
+
+    void process_file(fs::path& path)
+    {
+        Normalizer normalizer;
+        if (opts.verbose)
+        {
+            std::cout << "examine " << path << '\n';
+        }
+
+        std::string full_name = path.string();
+        normalizer.normalize(full_name.c_str());
+    }
+
+
+    bool process(const char* arg)
+    {
+        try
+        {
+            fs::path path = fs::canonical(arg);
+            fs::directory_entry dir(path);
+            if (dir.is_directory())
+            {
+                scan_and_process(path);
+            }
+            else if (dir.is_regular_file())
+            {
+                process_file(path);
+            }
+        }
+        catch(const fs::filesystem_error& err)
+        {
+            std::cerr << err.what() << '\n';
+            return false;
+        }
+
+        return true;
     }
 
 }
 
+
 int main(int argc, char** argv)
 {
-    if (argc != 2)
+    //  Emit a short usage message if called without arguments
+    if (argc < 2)
     {
-        std::cout << "usage: source_normalizer directory\n";
-        return 1;
+        std::cout << usage_msg << "Try '" PROGRAM_NAME " --help' for more information.\n";
+        return 0;
     }
 
-    std::string root_dir = argv[1];
+    int err = 0;
+    int opt_index = 0;
+    for (;;)
+    {
+        int ch = getopt_long(argc, argv, short_options, long_options, &opt_index);
+        if (ch == -1)
+            break;
 
-    int err = scan_and_process(root_dir);
+        switch (ch)
+        {
+            case 'f': // fix
+                opts.fix = true;
+                break;
+
+            case 'h': // help
+                emit_help(std::cout);
+                return 0;
+
+            case 'r': // recursive
+                opts.recursive = true;
+                break;
+
+            case 's': // skip
+                add_skip(optarg);
+                break;
+
+            case 'v': // verbose
+                opts.verbose = true;
+                break;
+
+            case 'V': // version
+                emit_version(std::cout);
+                return 0;
+
+            case '?':
+                ++err;
+                break;
+        }
+    }
+
+    while (optind < argc)
+    {
+        bool ok = process(argv[optind]);
+
+        //  Stop at first serious error
+        if (!ok)
+        {
+            break;
+        }
+
+        ++optind;
+    }
 
     return err;
 }

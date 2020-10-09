@@ -130,7 +130,7 @@ namespace {
 }   //  namespace
 
 
-void Normalizer::normalize(const std::experimental::filesystem::path& path)
+void Normalizer::normalize(const char* path)
 {
     m_errors = 0;
     m_full_name.clear();
@@ -156,9 +156,9 @@ void Normalizer::normalize(const std::experimental::filesystem::path& path)
 }
 
 
-bool Normalizer::load_file(const std::experimental::filesystem::path& path)
+bool Normalizer::load_file(const char* path)
 {
-    m_full_name = std::experimental::filesystem::canonical(path).string();
+    m_full_name = path;
 
     std::ifstream input(m_full_name, std::ifstream::binary | std::ifstream::ate);
     if (!input)
