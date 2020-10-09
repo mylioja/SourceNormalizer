@@ -120,7 +120,7 @@ namespace {
     //  Add an "and" if needed to make the message nicer
     void beautify_message(std::string& text)
     {
-        auto pos = text.find(',');
+        auto pos = text.rfind(',');
         if (pos != std::string::npos)
         {
             text.insert(pos+1, " and");
@@ -151,7 +151,7 @@ void Normalizer::normalize(const char* path)
 
     if (is_fixable(m_errors))
     {
-
+        //  TODO: Add code to fix the detected errors
     }
 }
 
