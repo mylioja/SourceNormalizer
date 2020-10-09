@@ -35,14 +35,25 @@ namespace {
 
     const char help_msg[] =
         "Detect and optionally fix whitespace issues in source files.\n"
-        "Example: " PROGRAM_NAME " menu.h main.c\n"
+        "Example: " PROGRAM_NAME " menu.h main.c\n\n"
+        "Options:\n"
+        "  -f, --fix        Fix detected easily fixable errors\n"
+        "  -h, --help       Display this help text and exit\n"
+        "  -r, --recursive  Recurse to subdirectories\n"
+        "  -s, --skip       Skip the given subdirectory when recursing\n"
+        "  -v, --verbose    Display lots of messages\n"
+        "  -V, --version    Display program version and exit\n\n"
+        "When path is a directory, and also in recursive mode, only files with\n"
+        "extensions .c, .cc, .cpp, .h, and .hpp are examined.\n"
+        "If the path is a normal file, it'll be processed regardless of the extension.\n"
+        "Without '--fix' option the detected problems are only reported.\n"
         ;
 
     const char copyright_msg[] =
         "Copyright (C) 2020 Martti Ylioja.\n"
-        "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.\n"
-        "This is free software: you are free to change and redistribute it.\n"
-        "There is NO WARRANTY, to the extent permitted by law.\n";
+        "This program comes with ABSOLUTELY NO WARRANTY.\n"
+        "This is free software, and you are welcome to redistribute it under the terms\n"
+        "of GNU GPL version 3 license or later <http://gnu.org/licenses/gpl.html>.\n";
 
     void emit_version(std::ostream& os)
     {
