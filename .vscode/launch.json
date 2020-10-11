@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/source_normalizer",
-            "args": ["-Zvr", "--skip=build", "../.."],
+            "args": ["-r", "--skip=build", "../.."],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

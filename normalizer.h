@@ -25,7 +25,7 @@
 class Normalizer
 {
 public:
-    void normalize(const char* path);
+    void normalize(const char* path, bool fix);
 
 private:
     using Buffer = std::vector<char>;
@@ -42,6 +42,11 @@ private:
     int classify_invalid() const;
 
     void add_error_message(const char* text);
+
+    //  Returns true if all OK
+    bool make_a_backup() const;
+
+    void fix_the_file(int tab_width) const;
 
     unsigned m_errors;
     std::string m_full_name;

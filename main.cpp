@@ -73,6 +73,7 @@ void scan_and_process(fs::path& path)
 {
     Normalizer normalizer;
 
+    bool fix = Options::get()->fix;
     bool verbose = Options::get()->verbose;
     bool recursive = Options::get()->recursive;
 
@@ -109,7 +110,7 @@ void scan_and_process(fs::path& path)
             if (select)
             {
                 std::string full_name = entry.path().string();
-                normalizer.normalize(full_name.c_str());
+                normalizer.normalize(full_name.c_str(), fix);
             }
         }
     }
@@ -125,7 +126,7 @@ void process_file(fs::path& path)
     }
 
     std::string full_name = path.string();
-    normalizer.normalize(full_name.c_str());
+    normalizer.normalize(full_name.c_str(), Options::get()->fix);
 }
 
 

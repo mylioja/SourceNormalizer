@@ -27,9 +27,11 @@ namespace {
 //  Error bits
 enum {
     //  Fixable errors
-    err_unusual_whitespace = 0x0001,   // Tabs, FF, etc...
-    err_trailing_whitespace = 0x0002,  // Lines with whitespace at end
-    err_cr_lf_line_endings = 0x0004,   // Windows CR-LF line ending
+    err_tabs = 0x0001,                 // Tabs
+    err_unusual_whitespace = 0x0002,   // '\v', '\f', etc...
+    err_trailing_whitespace = 0x0004,  // Lines with whitespace at end
+    err_cr_lf_line_endings = 0x0008,   // Windows "\r\n" line endings
+    err_no_lf_at_end = 0x0010,         // No '\n' at end of file
     err_fixable = 0x00ff,
     //
     //  Hopeless errors
@@ -59,16 +61,21 @@ bool is_fixable(unsigned errors)
 unsigned classify_errors(const char* data, int size)
 {
     unsigned errors = 0;
-
     int unusual_whitespace = 0;
 
-    //  Any arbitrary character that isn't regarded as whitespace
+    //  An arbitrary character that isn't regarded as whitespace
     constexpr int not_a_space = 0;
 
     int current = not_a_space;
     int penultimate = not_a_space;
     int antepenultimate = not_a_space;
     int last_character = not_a_space;
+
+    //  The last character should be a line feed.
+    if (size > 0 && data[size - 1] != '\n')
+    {
+        errors |= err_no_lf_at_end;
+    }
 
     const unsigned char* ptr = reinterpret_cast<const unsigned char*>(data);
     while (size--)
@@ -110,6 +117,9 @@ unsigned classify_errors(const char* data, int size)
                 break;
 
             case '\t':  //  horizontal tab
+                errors |= err_tabs;
+                break;
+
             case '\r':  //  carriage return
             case '\v':  //  vertical tab
             case '\f':  //  form feed
@@ -144,9 +154,30 @@ void beautify_message(std::string& text)
     }
 }
 
+
+//  Trim trailing spaces from a line of text
+void trim(std::string& text)
+{
+    while (!text.empty() && text.back() == ' ')
+    {
+        text.resize(text.size() - 1);
+    }
+}
+
+
+void append_tab_as_spaces(std::string& text, int tab_width)
+{
+    int length = int(text.size());
+    int tabbed_length = tab_width * ((length + tab_width - 1) / tab_width);
+    int count = tabbed_length - length;
+    text.append(count, ' ');
+}
+
+
 }  //  namespace
 
-void Normalizer::normalize(const char* path)
+
+void Normalizer::normalize(const char* path, bool fix)
 {
     m_errors = 0;
     m_full_name.clear();
@@ -164,11 +195,19 @@ void Normalizer::normalize(const char* path)
         return;  //  No errors found
     }
 
-    if (is_fixable(m_errors))
+    if (fix && is_fixable(m_errors))
     {
-        //  TODO: Add code to fix the detected errors
+        if (make_a_backup())
+        {
+            fix_the_file(4);
+        }
+        else
+        {
+            std::cerr << "File: " << m_full_name << " not fixed. Couldn't make a backup.\n";
+        }
     }
 }
+
 
 bool Normalizer::load_file(const char* path)
 {
@@ -187,6 +226,7 @@ bool Normalizer::load_file(const char* path)
 
     return true;
 }
+
 
 bool Normalizer::find_errors()
 {
@@ -219,22 +259,32 @@ bool Normalizer::find_errors()
 
     if (m_errors & err_invalid_characters)
     {
-        add_error_message("Invalid characters");
+        add_error_message("invalid characters");
+    }
+
+    if (m_errors & err_tabs)
+    {
+        add_error_message("tabs");
     }
 
     if (m_errors & err_unusual_whitespace)
     {
-        add_error_message("Tabs or unusual whitespace");
+        add_error_message("unusual whitespace");
     }
 
     if (m_errors & err_trailing_whitespace)
     {
-        add_error_message("Trailing whitespace");
+        add_error_message("trailing whitespace");
     }
 
     if (m_errors & err_cr_lf_line_endings)
     {
         add_error_message("CR-LF line endings");
+    }
+
+    if (m_errors & err_no_lf_at_end)
+    {
+        add_error_message("no line feed at end");
     }
 
     beautify_message(m_error_message);
@@ -297,9 +347,15 @@ int Normalizer::classify_invalid() const
     }
 
     //  Plenty of unprintable characters would suggest a binary file
-    if (unprintable > printable/3)
+    if (unprintable > size / 3)
     {
         return eBINARY;
+    }
+
+    //  UTF16 must have even size
+    if (size & 1)
+    {
+        return eDONT_KNOW;
     }
 
     //  Lots of zeros in either even or odd locations suggests UTF16.
@@ -311,7 +367,9 @@ int Normalizer::classify_invalid() const
         bigger = even;
     }
 
-    if (smaller == 0 && bigger > size/3)
+    //  Each zero should be paired with a printable character,
+    //  and there shouldn't be much else in the file.
+    if (smaller == 0 && bigger == printable && 2*printable > (size - size/10))
     {
         return eUTF16;
     }
@@ -328,4 +386,66 @@ void Normalizer::add_error_message(const char* text)
     }
 
     m_error_message += text;
+}
+
+
+//  Make a backup copy of the original file before doing any fixes
+bool Normalizer::make_a_backup() const
+{
+    std::string output_path = m_full_name;
+    output_path += ".sono~";  // from SOurce NOrmalizer
+    std::ofstream output(output_path, std::ofstream::binary | std::ofstream::trunc);
+    output.write(m_data.data(), m_data.size());
+    output.flush();
+    return output.good();
+}
+
+
+//  Fix the fixable issues
+void Normalizer::fix_the_file(int tab_width) const
+{
+    std::ofstream output(m_full_name, std::ofstream::binary | std::ofstream::trunc);
+    std::string line;
+
+    const char* cursor = m_data.data();
+    const char* end = cursor + data_size();
+    while (cursor != end)
+    {
+        int ch = *cursor++;
+        if (!std::isspace(ch))
+        {
+            line += char(ch);
+            continue;
+        }
+
+        //  Found some sort of whitespace.
+        //  Tab and line feed need special treatment, all the rest are
+        //  replaced by ordinary old fashioned space characters ' '.
+        switch (ch)
+        {
+        case '\t':  // tab
+            append_tab_as_spaces(line, tab_width);
+            break;
+
+        case '\n':  // newline
+            //  Remove trailing spaces if any, write the line out,
+            //  and begin a new one.
+            trim(line);
+            output << line << '\n';
+            line.clear();
+            break;
+
+        default:
+            line += ' ';
+            break;
+        }
+    }
+
+    //  If the file didn't end with a line feed,
+    //  there might be one last line still pending.
+    trim(line);
+    if (!line.empty())
+    {
+        output << line << '\n';
+    }
 }
