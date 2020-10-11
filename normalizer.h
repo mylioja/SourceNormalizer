@@ -37,7 +37,9 @@ private:
 
     int data_size() const { return int(m_data.size()); }
 
-    bool is_utf16() const;
+    //  If invalid characters, try to figure out why
+    enum { eDONT_KNOW, eBINARY, eUTF16 };
+    int classify_invalid() const;
 
     void add_error_message(const char* text);
 

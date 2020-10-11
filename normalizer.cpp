@@ -18,6 +18,7 @@
 #include "normalizer.h"
 
 #include <cctype>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 
@@ -34,6 +35,7 @@ enum {
     //  Hopeless errors
     err_invalid_encoding = 0x0100,    // Possibly UTF-16
     err_invalid_characters = 0x0200,  // Strange characters
+    err_not_a_text_file = 0x0400,     // Not a text file
     err_hopeless = 0xff00,
 };
 
@@ -197,14 +199,26 @@ bool Normalizer::find_errors()
 
     if (m_errors & err_invalid_characters)
     {
-        if (is_utf16())
+        int type = classify_invalid();
+        switch (type)
         {
-            //  If encoding is wrong, the other errors aren't significant
-            m_errors = err_invalid_encoding;
-            add_error_message("Invalid encoding. Possibly UTF-16?");
-            return true;
-        }
+        case eBINARY:
+            m_errors = err_not_a_text_file;
+            add_error_message("binary data. Probably not a text file.");
+            break;
 
+        case eUTF16:
+            m_errors = err_invalid_encoding;
+            add_error_message("invalid encoding. Possibly UTF-16");
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    if (m_errors & err_invalid_characters)
+    {
         add_error_message("Invalid characters");
     }
 
@@ -229,10 +243,21 @@ bool Normalizer::find_errors()
     return true;
 }
 
-//  Files coming from Windows may sometimes have UTF-16 encoding.
-//  This is a quick check for it.
-bool Normalizer::is_utf16() const
+
+//  Try to figure out what's up with the invalid characters
+int Normalizer::classify_invalid() const
 {
+    int size = data_size();
+
+    // clang-format off
+    // ELF binaries begin with "\x7fELF" and the ELF header is at least 52 bytes long.
+    if (size > 50 && std::memcmp(m_data.data(), "\x7f" "ELF", 4) == 0)
+    {
+        return true;
+    }
+    // clang-format on
+
+    //  Files coming from Windows may sometimes have UTF-16 encoding.
     //  A leading Byte Order Mark (BOM) is a good sign of an UTF-16 or UCS-2
     //  encoding.
     unsigned bom = m_data[0] | (m_data[1] << 8);
@@ -241,32 +266,59 @@ bool Normalizer::is_utf16() const
         return true;
     }
 
-    //  Another sign is lots of zeros in either even or odd locations.
-    //  (Because most of the source code is 7-bit ASCII characters)
-    int size = data_size();
-
-    //  Unfortunately this heuristic doesn't work too well if the file is really
-    //  short.
-    if (size < 100)
+    //  Unfortunately the following heuristic doesn't work too well
+    //  if the file is really short.
+    if (size < 80)
     {
-        return false;
+        return eDONT_KNOW;
     }
 
     int even = 0;
     int odd = 0;
-    for (int ix = 0; ix < size - 1; ix += 2)
+    int printable = 0;
+    int unprintable = 0;
+    for (int ix = 0; ix < size; ++ix)
     {
-        even += !m_data[ix];
-        odd += !m_data[ix + 1];
+        int ch = m_data[ix];
+        if (ch == 0)
+        {
+            if (ix & 0x01)
+                ++odd;
+            else
+                ++even;
+
+            continue;
+        }
+
+        if (ch >= ' ' && ch <= '~')
+            printable++;
+        else
+            unprintable++;
     }
 
-    if (even < odd)
+    //  Plenty of unprintable characters would suggest a binary file
+    if (unprintable > printable/3)
     {
-        even = odd;
+        return eBINARY;
     }
 
-    return even > size / 3;
+    //  Lots of zeros in either even or odd locations suggests UTF16.
+    int smaller = even;
+    int bigger = odd;
+    if (smaller > bigger)
+    {
+        smaller = odd;
+        bigger = even;
+    }
+
+    if (smaller == 0 && bigger > size/3)
+    {
+        return eUTF16;
+    }
+
+    return eDONT_KNOW;
 }
+
 
 void Normalizer::add_error_message(const char* text)
 {
