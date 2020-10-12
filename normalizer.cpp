@@ -16,6 +16,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "normalizer.h"
+#include "utf16checker.h"
 
 #include <cctype>
 #include <cstring>
@@ -219,9 +220,9 @@ bool Normalizer::load_file(const char* path)
         return false;
     }
 
-    auto pos = input.tellg();
+    m_data.reserve(input.tellg());
+
     input.seekg(0);
-    m_data.reserve(pos);
     m_data.assign(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
 
     return true;
@@ -307,71 +308,37 @@ int Normalizer::classify_invalid() const
     }
     // clang-format on
 
-    //  Files coming from Windows may sometimes have UTF-16 encoding.
-    //  A leading Byte Order Mark (BOM) is a good sign of an UTF-16 or UCS-2
-    //  encoding.
-    unsigned bom = m_data[0] | (m_data[1] << 8);
-    if (bom == 0xfeff || bom == 0xfffe)
+    //  Files coming from Windows may have UTF-16 encoding.
+    Utf16Checker utf16;
+    int err = utf16.check(m_data.data(), size);
+    if (err == Utf16Checker::eOK)
     {
-        return true;
+        auto& counts = utf16.counts();
+
+        //  Don't accept any weird characters in the ASCII range, and
+        //  allow only about 5% non-ascii characters.
+        int non_ascii = counts.total_characters - counts.normal_ascii;
+        if (counts.weird_ascii == 0 && 20*non_ascii < counts.total_characters)
+        {
+            return eUTF16;
+        }
     }
 
-    //  Unfortunately the following heuristic doesn't work too well
-    //  if the file is really short.
-    if (size < 80)
-    {
-        return eDONT_KNOW;
-    }
-
-    int even = 0;
-    int odd = 0;
-    int printable = 0;
-    int unprintable = 0;
+    int normal = 0;
+    int weird = 0;
     for (int ix = 0; ix < size; ++ix)
     {
         int ch = m_data[ix];
-        if (ch == 0)
-        {
-            if (ix & 0x01)
-                ++odd;
-            else
-                ++even;
-
-            continue;
-        }
-
-        if (ch >= ' ' && ch <= '~')
-            printable++;
+        if (isprint(ch) || isspace(ch))
+            normal++;
         else
-            unprintable++;
+            weird++;
     }
 
-    //  Plenty of unprintable characters would suggest a binary file
-    if (unprintable > size / 3)
+    //  Plenty of weird characters would suggest a binary file
+    if (5*weird > normal)
     {
         return eBINARY;
-    }
-
-    //  UTF16 must have even size
-    if (size & 1)
-    {
-        return eDONT_KNOW;
-    }
-
-    //  Lots of zeros in either even or odd locations suggests UTF16.
-    int smaller = even;
-    int bigger = odd;
-    if (smaller > bigger)
-    {
-        smaller = odd;
-        bigger = even;
-    }
-
-    //  Each zero should be paired with a printable character,
-    //  and there shouldn't be much else in the file.
-    if (smaller == 0 && bigger == printable && 2*printable > (size - size/10))
-    {
-        return eUTF16;
     }
 
     return eDONT_KNOW;
