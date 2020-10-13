@@ -15,167 +15,56 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "normalizer.h"
+#include "file_scanner.h"
 #include "options.h"
 
-#include <filesystem>
 #include <iostream>
-#include <regex>
-#include <set>
 #include <string>
 
-namespace fs = std::filesystem;
 
-namespace {
-
-const char prog_info[] =
+//  This string contains some basic info about the program.
+//
+//  The text is used by options parser for simple variable substitution,
+//  but it should also look nice and informative in a core dump, or in
+//  a hex dump of the executable binary image.
+//
+//  Variable names are delimited by line feed '\n' and ": ".
+//  Any text after the ": " up to the next line feed '\n' is the value.
+//
+const char program_info[] =
+    "\n"
     "NAME: source_normalizer\n"
-    "VERSION: 1.2\n"
+    "VERSION: 1.3\n"
     "COPYRIGHT: Copyright (C) 2020 Martti Ylioja\n"
     "SPDX-License-Identifier: GPL-3.0-or-later\n";
-
-
-//  Extensions accepted as source files
-const auto cpp_regex =
-    std::regex("\\.(h|hpp|c|cc|cpp)", std::regex::optimize | std::regex::extended);
-
-
-//  Return true if the path denotes an uninteresting directory
-//  that should be skipped.
-bool should_be_skipped(const fs::path& path)
-{
-    std::string name = path.filename().string();
-
-    //  Skip if the name begins with a '.'
-    if (name[0] == '.')
-    {
-        return true;
-    }
-
-    //  Skip if one of the names given in skip options
-    if (Options::get()->skip.count(name))
-    {
-        return true;
-    }
-
-    return false;
-}
-
-
-bool has_required_extension(const fs::path& path)
-{
-    std::string ext = path.extension().string();
-    return std::regex_match(ext, cpp_regex);
-}
-
-
-void scan_and_process(fs::path& path)
-{
-    Normalizer normalizer;
-
-    bool fix = Options::get()->fix;
-    bool verbose = Options::get()->verbose;
-    bool recursive = Options::get()->recursive;
-
-    auto iter = fs::recursive_directory_iterator(path);
-    const auto end = fs::recursive_directory_iterator();
-    for (; iter != end; ++iter)
-    {
-        const auto& entry = *iter;
-        if (entry.is_directory())
-        {
-            const char* prefix = "enter ";
-            if (!recursive || should_be_skipped(entry.path()))
-            {
-                iter.disable_recursion_pending();
-                prefix = "skip ";
-            }
-
-            if (verbose)
-            {
-                std::cout << prefix << entry.path() << '\n';
-            }
-
-            continue;
-        }
-
-        if (entry.is_regular_file())
-        {
-            bool select = has_required_extension(entry.path());
-            if (verbose)
-            {
-                std::cout << (select ? "examine " : "skip ") << entry.path() << '\n';
-            }
-
-            if (select)
-            {
-                std::string full_name = entry.path().string();
-                normalizer.normalize(full_name.c_str(), fix);
-            }
-        }
-    }
-}
-
-
-void process_file(fs::path& path)
-{
-    Normalizer normalizer;
-    if (Options::get()->verbose)
-    {
-        std::cout << "examine " << path << '\n';
-    }
-
-    std::string full_name = path.string();
-    normalizer.normalize(full_name.c_str(), Options::get()->fix);
-}
-
-
-bool process(const char* arg)
-{
-    try
-    {
-        fs::path path = fs::canonical(arg);
-        fs::directory_entry dir(path);
-        if (dir.is_directory())
-        {
-            scan_and_process(path);
-        }
-        else if (dir.is_regular_file())
-        {
-            process_file(path);
-        }
-    }
-    catch (const fs::filesystem_error& err)
-    {
-        std::cerr << err.what() << '\n';
-        return false;
-    }
-
-    return true;
-}
-
-
-}  // namespace
 
 
 int main(int argc, char** argv)
 {
     Options options;
-    int err = options.parse(argc, argv, prog_info);
-    if (err != Options::OK)
+    int err = options.parse(argc, argv, program_info);
+    switch (err)
     {
-        return err - 1;
+    case Options::eDONE:
+        return 0;  //  All done (was maybe --help or --version)
+
+    case Options::eERROR:  // Error with the command line
+        return 1;
+
+    case Options::eOK:  // No errors
+        break;
     }
 
-    for (int arg_ix = options.first_argument; arg_ix < argc; ++arg_ix)
+    err = 0;
+    for (int arg_ix = options.first_argument(); arg_ix < argc; ++arg_ix)
     {
         const char* arg = argv[arg_ix];
-        bool ok = process(arg);
+        bool ok = FileScanner::process(arg);
 
         //  Stop at the first serious error
         if (!ok)
         {
-            err = 1;
+            err = 2;
             break;
         }
     }

@@ -86,8 +86,10 @@ const char* find_str(const char* text, const char* key)
 //
 const char* emit_variable_value(std::ostream& os, const char* info, const char* key_begin)
 {
+    //  Variable names are delimited by '\n' and ": ", so adjust accordingly
     const char* key_end = find_str(key_begin, ")");
-    std::string key(key_begin + 2, key_end);
+    std::string key(key_begin + 1, key_end);
+    key[0] = '\n';
     key += ": ";
 
     const char* found = find_str(info, key.c_str());
@@ -148,7 +150,7 @@ const Options* Options::get()
 void Options::add_skip(const char* arg)
 {
     //  TODO: Accept a comma separated list of names
-    skip.emplace(arg);
+    m_skip.emplace(arg);
 }
 
 
@@ -167,15 +169,15 @@ int Options::parse(int argc, char** argv, const char* info)
         switch (ch)
         {
         case 'f':  // fix
-            fix = true;
+            m_fix = true;
             break;
 
         case 'h':  // help
             emit_help(std::cout, info);
-            return DONE;
+            return eDONE;
 
         case 'r':  // recursive
-            recursive = true;
+            m_recursive = true;
             break;
 
         case 's':  // skip
@@ -183,12 +185,12 @@ int Options::parse(int argc, char** argv, const char* info)
             break;
 
         case 'v':  // verbose
-            verbose = true;
+            m_verbose = true;
             break;
 
         case 'V':  // version
             emit_version(std::cout, info);
-            return DONE;
+            return eDONE;
 
         case '?':
             ++err;
@@ -196,15 +198,15 @@ int Options::parse(int argc, char** argv, const char* info)
         }
     }
 
-    first_argument = optind;
+    m_first_argument = optind;
 
     //  Emit a short usage message if there were errors, or
     //  if the program was called without any options or arguments.
     if (err || argc < 2)
     {
         emit_short_help(std::cerr, info);
-        return ERRORS;
+        return eERROR;
     }
 
-    return OK;
+    return eOK;
 }

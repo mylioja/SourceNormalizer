@@ -26,27 +26,44 @@
 class Options
 {
 public:
-    bool fix = false;  // Try to fix errors
-    bool verbose = false;
-    bool recursive = false;
+    bool fix() const { return m_fix; }
+    bool verbose() const { return m_verbose; }
+    bool recursive() const { return m_recursive; }
 
-    //  Directory names to be skipped when recursing
-    //  For example: "bin", "build", etc...
-    std::set<std::string> skip;
+    // //  Directory names to be skipped when recursing
+    // //  For example: "bin", "build", etc...
+    std::set<std::string> skip() const { return m_skip; }
 
-    //  Index of the first argument after all options were parsed
-    int first_argument = 0;
+    // //  Index of the first argument after all options were parsed
+    int first_argument() const { return m_first_argument; }
 
     //  Global read only access to the options
     static const Options* get();
 
 private:
     //  Possible return values from parse.
-    enum { OK, DONE, ERRORS };
+    enum {
+        eOK,     // No problems - continue normally
+        eDONE,   // All done - exit normally (had --help or --version option)
+        eERROR,  // Errors detected and reported - exit with an error code
+    };
     int parse(int argc, char** argv, const char* info);
 
+    //  Add a directory name to the list of names to be skipped
     void add_skip(const char* arg);
 
     //  Only main can set the options
     friend int main(int argc, char** argv);
+
+    bool m_fix = false;  // Try to fix errors
+    bool m_verbose = false;
+    bool m_recursive = false;
+
+    //  Directory names to be skipped when recursing
+    //  For example: "bin", "build", etc...
+    std::set<std::string> m_skip;
+
+    //  Index of the first argument after all options were parsed
+    int m_first_argument = 0;
+
 };
