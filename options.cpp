@@ -42,16 +42,16 @@ const char usage_msg[] = "Usage: $(NAME) [option]... path [path]...\n";
 
 const char help_msg[] =
     "Detect and optionally fix whitespace issues in source files.\n"
-    "Example: $(NAME) main.cpp options.h\n\n"
+    "Example: $(NAME) -rv -s bin .\n\n"
     "Options:\n"
     "  -f, --fix        Fix detected easily fixable errors\n"
     "  -h, --help       Display this help text and exit\n"
     "  -r, --recursive  Recurse to subdirectories\n"
-    "  -s, --skip       Skip the given subdirectory when recursing\n"
+    "  -s, --skip=name  Skip the given subdirectory when recursing\n"
     "  -v, --verbose    Display lots of messages\n"
     "  -V, --version    Display program version and exit\n\n"
     "When path is a directory, and also in recursive mode, only files with\n"
-    "extensions '.c', '.cc', '.cpp', '.h', and '.hpp' are examined.\n"
+    "extensions 'c', 'cc', 'cpp', 'h', and 'hpp' are examined.\n"
     "If the path is a normal file, it'll be processed regardless of the extension.\n"
     "Without the '--fix' option, detected problems are reported but not fixed.\n"
     "Recursion always skips subdirectories with names having a leading period.\n";
