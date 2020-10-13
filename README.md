@@ -76,13 +76,13 @@ My new `Options` command line handler is one step towards this goal.
 It handles the `--help` and `--version` options, and makes it quite easy to
 implement other options in the genuine GNU style.
 
-This is also a good exercise for me in preparation for releasing a larger project
-with the GPL3 license.
-
 ### Release under `GPL-3.0-or-later`
 
 As you may have noticed, I'm using a lot of code and getting major influences from the GNU project.
 Therefore I'm releasing the program under GPL 3 (or later) license.
+
+This is also a good exercise for me in preparation for releasing a larger project
+with the GPL3 license.
 
 ### Reliably recognize UTF-16 encoded source text
 
