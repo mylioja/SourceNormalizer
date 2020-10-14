@@ -11,14 +11,60 @@ I like my sources to have:
 - No trailing spaces at the ends of lines
 - A line feed `'\n'` as the last character of the file
 
+So, as a hobby project, I started writing a small tool
+to detect and optionally fix these issues
+in my source files. [Read more about the history here.](#some-history)
+
+## Usage
+
+Name of the tool is `source_normalizer`, and the anticipated normal
+use-case is to scan all source files in a given directory and report
+all the whitespace problems found. This is done as follows:
+
+    source_normalizer path_to_examine
+
+If the code is in several subdirectories, it's easy to scan them
+all in one go using the `--recursive` or `-r` option.
+
+    source_normalizer -r path_to_examine
+
+The recursive scan will skip all sub directories that have a name
+starting with a period, typically `.git`, `.vscode`, etc...
+You ask it to skip also other directories with a `--skip` or `-s` option.
+The next command will skip also directories `bin` and `build`:
+
+    source_normalizer -r -s bin -s build path_to_examine
+
+If you'd like the tool to automatically fix the found issues,
+add the `--fix` or `-f` option to your command line.
+
+    source_normalizer -rf -s bin path_to_examine
+
+There are plenty of other options.
+With the `--help` option you can get an up to date overview.
+
+Instead of a directory name, you can also specify file names.
+This might be useful if you want to check or fix a file
+that doesn't end with an extension that the tool considers
+to indciate a source file.
+
+The current list is `.c`, `.cc`, `.cpp`, `.h`, and `.hpp`.
+Files with other extensions are ignored unless you
+specifically mention the file on the command line.
+
+## Some history
+
 A properly configured text editor can automatically take care
-of all these requirements, but I wanted to have a tool
+of all the listed requirements, but I wanted to have a tool
 to quickly and easily fix all these issues in a big bunch
 of source files.
 
 It turned out, that this was the easy part.
 
-## Other Goals added along the way
+Along the way a lot more got added, and some of it is
+still work in progress.
+
+## Other Goals - Added along the way
 
 It started as a very simple program, but then got the bright idea
 to use this as an opportunity to experiment with some techniques I have lately wanted to try.
