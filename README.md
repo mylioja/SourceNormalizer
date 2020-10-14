@@ -30,8 +30,9 @@ all in one go using the `--recursive` or `-r` option.
 
 The recursive scan will skip all sub directories that have a name
 starting with a period, typically `.git`, `.vscode`, etc...
-You ask it to skip also other directories with a `--skip` or `-s` option.
-The next command will skip also directories `bin` and `build`:
+You can ask it to skip also other subdirectories with a `--skip` or `-s` option.
+To skip more than one, the option can be repeated several times.
+For example, the next command will skip also directories `bin` and `build`:
 
     source_normalizer -r -s bin -s build path_to_examine
 
@@ -46,11 +47,23 @@ With the `--help` option you can get an up to date overview.
 Instead of a directory name, you can also specify file names.
 This might be useful if you want to check or fix a file
 that doesn't end with an extension that the tool considers
-to indciate a source file.
+to indicate a source file.
 
 The current list is `.c`, `.cc`, `.cpp`, `.h`, and `.hpp`.
 Files with other extensions are ignored unless you
 specifically mention the file on the command line.
+
+## Options
+
+*  `-f, --fix ` Fix detected easily fixable errors.
+*  `-h, --help ` Display this help text and exit
+*  `-r, --recursive ` Recurse to subdirectories
+*  `-s, --skip=name ` Skip the given subdirectory when recursing
+*  `-v, --verbose ` Display lots of messages
+*  `-V, --version ` Display program version and exit
+
+All whitespace problems are easily fixable, but only if the file has no strange or unprintable characters. Binary content and strange encodings, UTF-16 included, are considered unfixable at the moment.
+
 
 ## Some history
 
