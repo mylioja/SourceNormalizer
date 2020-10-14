@@ -55,14 +55,14 @@ specifically mention the file on the command line.
 
 ## Options
 
-*  `-f, --fix ` Fix detected easily fixable errors.
+*  `-f, --fix ` Fix detected easily fixable errors
 *  `-h, --help ` Display this help text and exit
 *  `-r, --recursive ` Recurse to subdirectories
 *  `-s, --skip=name ` Skip the given subdirectory when recursing
 *  `-v, --verbose ` Display lots of messages
 *  `-V, --version ` Display program version and exit
 
-All whitespace problems are easily fixable, but only if the file has no strange or unprintable characters. Binary content and strange encodings, UTF-16 included, are considered unfixable at the moment.
+All whitespace problems are easily fixable, but only if the file has no strange or unprintable characters. Binary content and strange encodings, UTF-16 included, are reported but considered unfixable at the moment.
 
 
 ## Some history
