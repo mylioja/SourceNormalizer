@@ -21,6 +21,21 @@
 #include <iostream>
 #include <string>
 
+//  If build system doesn't provide a timestamp, use this instead
+#ifndef BUILD_DATETIME
+#define BUILD_DATETIME __DATE__ " " __TIME__
+#endif
+
+//  Release builds set these variables to indicate status of the workspace.
+//  Set them to default values for builds that don't provide the info.
+//
+#ifndef GIT_REVISION
+#define GIT_REVISION "unknown"
+#endif
+
+#ifndef GIT_STATUS
+#define GIT_STATUS "unknown"
+#endif
 
 //  This string contains some basic info about the program.
 //
@@ -34,9 +49,12 @@
 const char program_info[] =
     "\n"
     "NAME: source_normalizer\n"
-    "VERSION: 1.3\n"
+    "VERSION: 1.4\n"
     "COPYRIGHT: Copyright (C) 2020 Martti Ylioja\n"
-    "SPDX-License-Identifier: GPL-3.0-or-later\n";
+    "SPDX-License-Identifier: GPL-3.0-or-later\n"
+    "BUILD_DATETIME: " BUILD_DATETIME "\n"
+    "GIT_REVISION: " GIT_REVISION "\n"
+    "GIT_STATUS: " GIT_STATUS "\n";
 
 
 int main(int argc, char** argv)

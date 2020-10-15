@@ -24,7 +24,7 @@
 #
 TARGET   := source_normalizer
 
-#	Directory for the build results
+#   Directory for the build results
 BUILD_DIR := ./build
 
 SRC      := $(wildcard *.cpp)
@@ -35,21 +35,35 @@ CXX      := g++-8
 CXXFLAGS := -std=c++17 -Wall -Wextra -Werror
 LIBS     := -lstdc++fs
 
-#	Detect "release" in the build targets and act accordingly
-ifeq (,$(findstring release, $(MAKECMDGOALS)))
+#   Provide the binary with a nice timestamp
+BUILDSTAMP := -DBUILD_DATETIME='"$(shell date --rfc-3339=second)"'
+
+#   Detect "release" in the build targets and act accordingly
+ifeq ($(findstring release, $(MAKECMDGOALS)),)
 #
-#	This is for debug.
-CXXFLAGS += -DDEBUG -O0 -g
+#   This is for debug.
+CXXFLAGS += -DDEBUG -O0 -g $(BUILDSTAMP)
 else
 #
-#	This is for release. Set options and force a full build.
-CXXFLAGS += -DNDEBUG -O3
+#   This is for release.
+#
+#   Get workspace revision and status from git (if available)
+GIT_HASH := $(shell git rev-parse HEAD)
+ifneq ($(GIT_HASH),)
+BUILDSTAMP += -DGIT_REVISION='"$(GIT_HASH)"'
+BUILDSTAMP += -DGIT_STATUS='"$(shell \
+    if git diff-index --quiet HEAD --; \
+    then echo Clean; else echo Modified; fi)"'
+endif
+#
+#   Set release options, and force clean to do a full build.
+CXXFLAGS += -DNDEBUG -O2 $(BUILDSTAMP)
 FORCE_CLEAN := clean
 endif
 
 all release: $(BUILD_DIR)/$(TARGET)
 
-#	Do a full build if any header is updated
+#   Do a full build if any header is updated
 $(BUILD_DIR)/%.o: %.cpp $(HEADERS) $(FORCE_CLEAN)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
