@@ -19,6 +19,7 @@
 #include "utf16checker.h"
 
 #include <cctype>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -174,6 +175,23 @@ void append_tab_as_spaces(std::string& text, int tab_width)
     text.append(count, ' ');
 }
 
+bool rename_file(const std::string& old_name, const std::string& new_name)
+{
+    int err = std::rename(old_name.c_str(), new_name.c_str());
+    if (!err)
+    {
+        return true;
+    }
+
+    std::string msg = "Could not rename ";
+    msg += old_name;
+    msg += " to ";
+    msg += new_name;
+
+    std::perror(msg.c_str());
+
+    return false;
+}
 
 }  //  namespace
 
@@ -198,13 +216,16 @@ void Normalizer::normalize(const char* path, bool fix)
 
     if (fix && is_fixable(m_errors))
     {
-        if (make_a_backup())
+        if (fix_the_file(4))
         {
-            fix_the_file(4);
-        }
-        else
-        {
-            std::cerr << "File: " << m_full_name << " not fixed. Couldn't make a backup.\n";
+            //  Rename the original to backup
+            std::string backup = m_full_name + ".bak~";
+            std::remove(backup.c_str());
+            if (rename_file(m_full_name, backup))
+            {
+                //  Rename the temporary to the original
+                rename_file(m_temp_name, m_full_name);
+            }
         }
     }
 }
@@ -356,22 +377,13 @@ void Normalizer::add_error_message(const char* text)
 }
 
 
-//  Make a backup copy of the original file before doing any fixes
-bool Normalizer::make_a_backup() const
-{
-    std::string output_path = m_full_name;
-    output_path += ".sono~";  // from SOurce NOrmalizer
-    std::ofstream output(output_path, std::ofstream::binary | std::ofstream::trunc);
-    output.write(m_data.data(), m_data.size());
-    output.flush();
-    return output.good();
-}
-
-
 //  Fix the fixable issues
-void Normalizer::fix_the_file(int tab_width) const
+bool Normalizer::fix_the_file(int tab_width)
 {
-    std::ofstream output(m_full_name, std::ofstream::binary | std::ofstream::trunc);
+    //  Write fixed output to a temporary file
+    m_temp_name = m_full_name;
+    m_temp_name += ".tmp~";
+    std::ofstream output(m_temp_name, std::ofstream::binary | std::ofstream::trunc);
     std::string line;
 
     const char* cursor = m_data.data();
@@ -415,4 +427,7 @@ void Normalizer::fix_the_file(int tab_width) const
     {
         output << line << '\n';
     }
+
+    output.flush();
+    return output.good();
 }

@@ -43,13 +43,11 @@ private:
 
     void add_error_message(const char* text);
 
-    //  Returns true if all OK
-    bool make_a_backup() const;
-
-    void fix_the_file(int tab_width) const;
+    bool fix_the_file(int tab_width);
 
     unsigned m_errors;
     std::string m_full_name;
+    std::string m_temp_name;
     std::string m_error_message;
     Buffer m_data;
 };
