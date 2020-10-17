@@ -20,47 +20,12 @@
 
 #include <filesystem>
 #include <iostream>
-#include <regex>
 #include <set>
 #include <string>
 
 namespace fs = std::filesystem;
 
 namespace {
-
-//  Extensions accepted as source files
-const auto cpp_regex =
-    std::regex("\\.(h|hpp|c|cc|cpp)", std::regex::optimize | std::regex::extended);
-
-
-//  Return true if the path denotes an uninteresting directory
-//  that should be skipped.
-bool should_be_skipped(const fs::path& path)
-{
-    std::string name = path.filename().string();
-
-    //  Skip if the name begins with a '.'
-    if (name[0] == '.')
-    {
-        return true;
-    }
-
-    //  Skip if one of the names given in skip options
-    if (Options::get()->skip().count(name))
-    {
-        return true;
-    }
-
-    return false;
-}
-
-
-bool has_required_extension(const fs::path& path)
-{
-    std::string ext = path.extension().string();
-    return std::regex_match(ext, cpp_regex);
-}
-
 
 void scan_and_process(fs::path& path)
 {
@@ -80,7 +45,7 @@ void scan_and_process(fs::path& path)
         if (entry.is_directory())
         {
             const char* prefix = "enter ";
-            if (!recursive || should_be_skipped(entry.path()))
+            if (!recursive || opts->should_be_skipped(entry.path().filename().string()))
             {
                 iter.disable_recursion_pending();
                 prefix = "skip ";
@@ -96,7 +61,7 @@ void scan_and_process(fs::path& path)
 
         if (entry.is_regular_file())
         {
-            bool select = has_required_extension(entry.path());
+            bool select = opts->is_source_extension(entry.path().extension().string());
             if (verbose)
             {
                 std::cout << (select ? "examine " : "skip ") << entry.path() << '\n';

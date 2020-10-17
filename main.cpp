@@ -49,7 +49,7 @@
 const char program_info[] =
     "\n"
     "NAME: source_normalizer\n"
-    "VERSION: 1.4\n"
+    "VERSION: 1.5\n"
     "COPYRIGHT: Copyright (C) 2020 Martti Ylioja\n"
     "SPDX-License-Identifier: GPL-3.0-or-later\n"
     "BUILD_DATETIME: " BUILD_DATETIME "\n"

@@ -26,6 +26,7 @@ namespace {
 // clang-format off
 struct option long_options[] =
 {
+    {"extension", required_argument, 0, 'e'},
     {"fix", no_argument, 0, 'f'},
     {"help", no_argument, 0, 'h'},
     {"recursive", no_argument, 0, 'r'},
@@ -37,7 +38,7 @@ struct option long_options[] =
 };
 // clang-format on
 
-const char short_options[] = "fhrst:vV";
+const char short_options[] = "e:fhrs:t:vV";
 
 const char usage_msg[] = "Usage: $(NAME) [option]... path [path]...\n";
 
@@ -45,15 +46,17 @@ const char help_msg[] =
     "Detect and optionally fix whitespace issues in source files.\n"
     "Example: $(NAME) -rv -s bin .\n\n"
     "Options:\n"
+    "  -e, --extension=ext[,ext]... Extensions to be treated as source files\n"
     "  -f, --fix        Fix detected easily fixable errors\n"
     "  -h, --help       Display this help text and exit\n"
     "  -r, --recursive  Recurse to subdirectories\n"
-    "  -s, --skip=name  Skip the given subdirectory when recursing\n"
+    "  -s, --skip=name[,name]... Subdirectories to skip when recursing\n"
     "  -t, --tabsize=n  Set the tab size (default is 4)\n"
     "  -v, --verbose    Display lots of messages\n"
     "  -V, --version    Display program version and exit\n\n"
+    "If no extensions were given, the following are assumed: c,cc,cpp,h,hpp\n"
     "When path is a directory, and also in recursive mode, only files with\n"
-    "extensions 'c', 'cc', 'cpp', 'h', and 'hpp' are examined.\n"
+    "the chosen extensions are examined.\n"
     "If the path is a normal file, it'll be processed regardless of the extension.\n"
     "Without the '--fix' option, detected problems are reported but not fixed.\n"
     "Recursion always skips subdirectories with names having a leading period.\n";
@@ -138,6 +141,29 @@ void emit_short_help(std::ostream& os, const char* info)
     emit_message(os, info, "Try '$(NAME) --help' for more information.\n");
 }
 
+
+class SuboptionTokenizer
+{
+public:
+    SuboptionTokenizer(const char* text) : m_text(text) { }
+
+    std::string& next()
+    {
+        //  Skip leading delimiters (and empty items)
+        constexpr const char* delimiters = ", ";
+        m_text += strspn(m_text, delimiters);
+        size_t size = strcspn(m_text, delimiters);
+        m_token.assign(m_text, m_text+size);
+        m_text += size;
+        return m_token;
+    }
+
+private:
+    const char* m_text;
+    std::string m_token;
+};
+
+
 Options* the_options;
 
 }  // namespace
@@ -151,8 +177,26 @@ const Options* Options::get()
 
 void Options::add_skip(const char* arg)
 {
-    //  TODO: Accept a comma separated list of names
-    m_skip.emplace(arg);
+    SuboptionTokenizer tokenizer(arg);
+    for (std::string& name = tokenizer.next(); !name.empty(); name = tokenizer.next())
+    {
+        m_skip.insert(name);
+    }
+}
+
+
+void Options::add_extension(const char* arg)
+{
+    SuboptionTokenizer tokenizer(arg);
+    for (std::string& ext = tokenizer.next(); !ext.empty(); ext = tokenizer.next())
+    {
+        if (ext[0] != '.')
+        {
+            ext.insert(ext.begin(), '.');
+        }
+
+        m_extensions.insert(ext);
+    }
 }
 
 
@@ -170,6 +214,10 @@ int Options::parse(int argc, char** argv, const char* info)
 
         switch (ch)
         {
+        case 'e':  // extension
+            add_extension(optarg);
+            break;
+
         case 'f':  // fix
             m_fix = true;
             break;
@@ -217,6 +265,12 @@ int Options::parse(int argc, char** argv, const char* info)
         return eERROR;
     }
 
+    //  If no extension given, use the default values
+    if (m_extensions.empty())
+    {
+        add_extension("c,cc,cpp,h,hpp");
+    }
+
     return eOK;
 }
 
@@ -234,4 +288,28 @@ bool Options::set_tabsize(const char* arg)
 
     m_tabsize = size;
     return true;
+}
+
+
+bool Options::should_be_skipped(const std::string& name) const
+{
+    //  Skip if the name begins with a '.'
+    if (name[0] == '.')
+    {
+        return true;
+    }
+
+    //  Skip if it's one of the names given in skip options
+    if (m_skip.count(name))
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+bool Options::is_source_extension(const std::string& extension) const
+{
+    return m_extensions.count(extension);
 }

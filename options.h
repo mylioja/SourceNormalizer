@@ -31,9 +31,11 @@ public:
     bool recursive() const { return m_recursive; }
     int tabsize() const { return m_tabsize; }
 
-    //  Directory names to be skipped when recursing
-    //  For example: "bin", "build", etc...
-    std::set<std::string> skip() const { return m_skip; }
+    //  true if the directory should be skipped when recursing
+    bool should_be_skipped(const std::string& name) const;
+
+    //  true if the extension suggests a source file
+    bool is_source_extension(const std::string& extension) const;
 
     //  Index of the first argument after all options were parsed
     int first_argument() const { return m_first_argument; }
@@ -53,6 +55,9 @@ private:
     //  Add a directory name to the list of names to be skipped
     void add_skip(const char* arg);
 
+    //  Add an extension to the accepted set
+    void add_extension(const char* arg);
+
     bool set_tabsize(const char* arg);
 
     //  Only main can set the options
@@ -68,7 +73,9 @@ private:
     //  For example: "bin", "build", etc...
     std::set<std::string> m_skip;
 
+    //  Extensions accepted in source file names
+    std::set<std::string> m_extensions;
+
     //  Index of the first argument after all options were parsed
     int m_first_argument = 0;
-
 };
