@@ -30,13 +30,14 @@ struct option long_options[] =
     {"help", no_argument, 0, 'h'},
     {"recursive", no_argument, 0, 'r'},
     {"skip", required_argument, 0, 's'},
+    {"tabsize", required_argument, 0, 't'},
     {"verbose", no_argument, 0, 'v'},
     {"version", no_argument, 0, 'V'},
     {0, 0, 0, 0}
 };
 // clang-format on
 
-const char short_options[] = "fhrs:vV";
+const char short_options[] = "fhrst:vV";
 
 const char usage_msg[] = "Usage: $(NAME) [option]... path [path]...\n";
 
@@ -48,6 +49,7 @@ const char help_msg[] =
     "  -h, --help       Display this help text and exit\n"
     "  -r, --recursive  Recurse to subdirectories\n"
     "  -s, --skip=name  Skip the given subdirectory when recursing\n"
+    "  -t, --tabsize=n  Set the tab size (default is 4)\n"
     "  -v, --verbose    Display lots of messages\n"
     "  -V, --version    Display program version and exit\n\n"
     "When path is a directory, and also in recursive mode, only files with\n"
@@ -184,6 +186,13 @@ int Options::parse(int argc, char** argv, const char* info)
             add_skip(optarg);
             break;
 
+        case 't':  // tabsize
+            if (!set_tabsize(optarg))
+            {
+                ++err;
+            }
+            break;
+
         case 'v':  // verbose
             m_verbose = true;
             break;
@@ -209,4 +218,20 @@ int Options::parse(int argc, char** argv, const char* info)
     }
 
     return eOK;
+}
+
+
+bool Options::set_tabsize(const char* arg)
+{
+    int size = std::atoi(arg);
+
+    //  Small sanity check
+    if (size < 1 || size > 100)
+    {
+        std::cerr << "Error: Strange tab size argument \"" << arg << "\"\n";
+        return false;
+    }
+
+    m_tabsize = size;
+    return true;
 }

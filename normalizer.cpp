@@ -196,7 +196,7 @@ bool rename_file(const std::string& old_name, const std::string& new_name)
 }  //  namespace
 
 
-void Normalizer::normalize(const char* path, bool fix)
+void Normalizer::normalize(const char* path, int tabsize, bool fix)
 {
     m_errors = 0;
     m_full_name.clear();
@@ -216,7 +216,7 @@ void Normalizer::normalize(const char* path, bool fix)
 
     if (fix && is_fixable(m_errors))
     {
-        if (fix_the_file(4))
+        if (fix_the_file(tabsize))
         {
             //  Rename the original to backup
             std::string backup = m_full_name + ".bak~";

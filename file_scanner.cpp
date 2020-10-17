@@ -66,9 +66,11 @@ void scan_and_process(fs::path& path)
 {
     Normalizer normalizer;
 
-    bool fix = Options::get()->fix();
-    bool verbose = Options::get()->verbose();
-    bool recursive = Options::get()->recursive();
+    const Options* opts = Options::get();
+    bool fix = opts->fix();
+    bool verbose = opts->verbose();
+    bool recursive = opts->recursive();
+    int tabsize = opts->tabsize();
 
     auto iter = fs::recursive_directory_iterator(path);
     const auto end = fs::recursive_directory_iterator();
@@ -103,7 +105,7 @@ void scan_and_process(fs::path& path)
             if (select)
             {
                 std::string full_name = entry.path().string();
-                normalizer.normalize(full_name.c_str(), fix);
+                normalizer.normalize(full_name.c_str(), tabsize, fix);
             }
         }
     }
@@ -118,8 +120,9 @@ void process_file(fs::path& path)
         std::cout << "examine " << path << '\n';
     }
 
+    const Options* opts = Options::get();
     std::string full_name = path.string();
-    normalizer.normalize(full_name.c_str(), Options::get()->fix());
+    normalizer.normalize(full_name.c_str(), opts->tabsize(), opts->fix());
 }
 
 }  // namespace

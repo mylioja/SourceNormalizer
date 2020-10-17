@@ -46,8 +46,8 @@ With the `--help` option you can get an up to date overview.
 
 Instead of a directory name, you can also specify file names.
 This might be useful if you want to check or fix a file
-that doesn't end with an extension that the tool considers
-to indicate a source file.
+that doesn't end with an extension that the tool identifies
+as belonging to a source file.
 
 The current list is `.c`, `.cc`, `.cpp`, `.h`, and `.hpp`.
 Files with other extensions are ignored unless you
@@ -59,6 +59,7 @@ specifically mention the file on the command line.
 *  `-h, --help ` Display this help text and exit
 *  `-r, --recursive ` Recurse to subdirectories
 *  `-s, --skip=name ` Skip the given subdirectory when recursing
+*  `-t, --tabsize=n ` Set the tab size (default is 4)
 *  `-v, --verbose ` Display lots of messages
 *  `-V, --version ` Display program version and exit
 

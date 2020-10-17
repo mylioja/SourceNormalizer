@@ -25,7 +25,7 @@
 class Normalizer
 {
 public:
-    void normalize(const char* path, bool fix);
+    void normalize(const char* path, int tabsize, bool fix);
 
 private:
     using Buffer = std::vector<char>;

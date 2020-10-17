@@ -29,12 +29,13 @@ public:
     bool fix() const { return m_fix; }
     bool verbose() const { return m_verbose; }
     bool recursive() const { return m_recursive; }
+    int tabsize() const { return m_tabsize; }
 
-    // //  Directory names to be skipped when recursing
-    // //  For example: "bin", "build", etc...
+    //  Directory names to be skipped when recursing
+    //  For example: "bin", "build", etc...
     std::set<std::string> skip() const { return m_skip; }
 
-    // //  Index of the first argument after all options were parsed
+    //  Index of the first argument after all options were parsed
     int first_argument() const { return m_first_argument; }
 
     //  Global read only access to the options
@@ -52,12 +53,16 @@ private:
     //  Add a directory name to the list of names to be skipped
     void add_skip(const char* arg);
 
+    bool set_tabsize(const char* arg);
+
     //  Only main can set the options
     friend int main(int argc, char** argv);
 
     bool m_fix = false;  // Try to fix errors
     bool m_verbose = false;
     bool m_recursive = false;
+
+    int m_tabsize = 4;
 
     //  Directory names to be skipped when recursing
     //  For example: "bin", "build", etc...
