@@ -170,7 +170,7 @@ void trim(std::string& text)
 void append_tab_as_spaces(std::string& text, int tab_width)
 {
     int length = int(text.size());
-    int tabbed_length = tab_width * ((length + tab_width - 1) / tab_width);
+    int tabbed_length = tab_width * ((length + tab_width) / tab_width);
     int count = tabbed_length - length;
     text.append(count, ' ');
 }
